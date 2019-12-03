@@ -14,7 +14,6 @@ Jose Rodrigo Narvaez Berlanga
 
 #include <iostream>
 
-
 #ifdef __APPLE__
 #include <OpenGL/OpenGL.h>
 #include <GLUT/glut.h>
@@ -32,7 +31,7 @@ Jose Rodrigo Narvaez Berlanga
 #include <stdarg.h>
 #include <iostream>
 
-using namespace std;
+
 
 #ifdef __APPLE__
 
@@ -44,7 +43,7 @@ using namespace std;
 
 #endif
 
-
+using namespace std;
 
 
 
@@ -67,13 +66,6 @@ char s[30];
 bool has_light = false;
 
 
-// ----------------------------------------------------------
-
-// Valores que controlan las propiedades de los materiales e iluminacion
-
-// ----------------------------------------------------------
-
-
 bool hasAmbiental = false;
 
 int light_position = 0;
@@ -85,49 +77,28 @@ int colorPersp = light_color;
 
 float Noemit[4] = { 0.0, 0.0, 0.0, 1.0 };
 
-float SphShininess = 75;         // Exponenete especular
+float shininess = 75;
 
 
-
-// Orientacion de origen para la luz ambiental
-
-float posiciones[2][4] = { { -0.5, -1.0, 1.0, 1 } , { -0.5, -1.0, -0.3, 1 } }; // Trasera | Central
+float posiciones[2][4] = { { -0.5, -1.0, 1.0, 1 } , { -0.5, -1.0, -0.3, 1 } };
 float luz[2][4] = { { 0.5, 1.0, -1.0, 1 } , { -0.9, -0.2, -0.8, 1 } };
 
 
-float SphAmbDiff[5][4] = {       // Colores de luz ambiente y difusa
-
-
-
-   {1.0, 1.0, 1.0, 1.0},         // Blanco
-
-   {0.5, 0.5, 0.0, 1.0},         // Amarillo
-
-   {0.0, 1.0, 0.0, 1.0},         // Verde
-
-   {0.0, 0.5, 0.5, 1.0},         // Cyan
-
-   {1.0, 0.0, 1.0, 1.0}         // Magenta
-
-
-
+float AmbientDifferent[5][4] = {
+   {1.0, 1.0, 1.0, 1.0},
+   {0.5, 0.5, 0.0, 1.0},
+   {0.0, 1.0, 0.0, 1.0},
+   {0.0, 0.5, 0.5, 1.0},
+   {1.0, 0.0, 1.0, 1.0}
 };
 
 
-
-// Valores de iluminacion
-
 float ambientLight[4] = { 0.2, 0.2, 0.2, 1.0 };
-
 float Lt0amb[4] = { 0.3, 0.3, 0.3, 1.0 };
-
 float Lt0diff[4] = { 1.0, 1.0, 1.0, 1.0 };
-
 float Lt0spec[4] = { 1.0, 1.0, 1.0, 1.0 };
-
 GLfloat directedLight[] = { 0.7f, 0.7f, 0.7f, 1.0f };
-
-float dirI[4] = { 1, 0, 0, 0 };            // Orientacion de origen para la luz dirigida (foco)
+float dirI[4] = { 1, 0, 0, 0 };
 float dirII[4] = { 0, 0, 0, 1 };
 
 
@@ -142,16 +113,19 @@ void init(void) {
     
     glDepthFunc(GL_LEQUAL);
     glShadeModel(GL_SMOOTH);
-//    gluOrtho2D(0.0,0.0,0.0,0.0);
-//    glOrtho(0.0f, 1200, 600, 0.0f, 0.0f, 1.0f);
+
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 }
 
-// ----------------------------------------------------------
+void ambientalOn() {
+    glLightfv(GL_LIGHT0, GL_POSITION, dirI);
+}
 
-// Función de retrollamada que define la iluminacion
+void ambientalOff() {
+    glLightfv(GL_LIGHT0, GL_POSITION, posiciones[light_position]); // Position is transformed by ModelView matrix
+    glLightfv(GL_LIGHT0, GL_POSITION, luz[light_position]);
+}
 
-// ----------------------------------------------------------
 
 void lightningOn() {
 
@@ -159,44 +133,42 @@ void lightningOn() {
 
     glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, Lt0spec);
 
-    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, Noemit);   // Turn off emission
-    if (hasAmbiental) {
-        glLightfv(GL_LIGHT0, GL_POSITION, dirI);
-    }else {
-        glLightfv(GL_LIGHT0, GL_POSITION, posiciones[light_position]); // Position is transformed by ModelView matrix
-        glLightfv(GL_LIGHT0, GL_POSITION, luz[light_position]);
-    }
-    glEnable(GL_DEPTH_TEST);   // Depth testing must be turned on
-    glEnable(GL_LIGHTING);      // Enable lighting calculations
-    glEnable(GL_LIGHT0);      // Turn on light #0.
-    // Set global ambient light
+    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, Noemit);
+    hasAmbiental ? ambientalOn() : ambientalOff();
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientLight);
-    // Light 0 light values.  Its position is set in drawScene().
     glLightfv(GL_LIGHT0, GL_AMBIENT, Lt0amb);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, Lt0diff);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, directedLight);
-    //glLightfv(GL_LIGHT0, GL_POSITION, luz[posicion_luz]);
     glLightfv(GL_LIGHT5, GL_DIFFUSE, dirII);
     glLightfv(GL_LIGHT0, GL_SPECULAR, Lt0spec);
 }
 
 void lightningOptions() {
-
-
-
-    printf("\n Menu para modificar la fuente de luz");
-    printf("\n\n1. Elija el tipo de iluminacion que desea \n\n\t[1] Ambiental \n\t[2] Fuente Directa");
+//    printf("\n Menu para modificar la fuente de luz");
+    //printf("\n\n1. Elija el tipo de iluminacion que desea \n\n\t(1) Ambiental \n\t[2] Fuente Directa");
+    printf("\n\n1. Elija el tipo de iluminacion que desea");
+    printf("\n\n1. (1) Ingrese 1 si quiere la opción: Iluminacion Ambiente");
+    printf("\n\n1. (2) Ingrese 2 si quiere la opción: Iluminacion Fuente Directa");
     char light_type[10];
     cout << "\n\nIngresa la opcion: ";
     cin >> light_type;
-    printf("\n\n2. Define el color de la iluminacion \n\n\t[1] Blanco\n\t[2] Amarillo\n\t[3] Verde\n\t[4] Cyan\n\t[5] Magenta");
+    printf("\n\n1. (1) Ingrese 1 si quiere color: Blanco");
+    printf("\n\n1. (2) Ingrese 2 si quiere color: Amarillo");
+    printf("\n\n1. (3) Ingrese 3 si quiere color: Verde");
+    printf("\n\n1. (4) Ingrese 4 si quiere color: Cyan");
+    printf("\n\n1. (5) Ingrese 5 si quiere color: Magenta");
     char color[10];
     cout << "\n\nIngresa la opcion: ";
     cin >> color;
 
 
 
-    printf("\n\n3. Elija la ubicacion \n\n\t[1] Trasera\n\t[2] Central");
+    printf("\n\n1. (1) Ingrese 1 si quiere color: Blanco");
+    printf("\n\n1. (2) Ingrese 2 si quiere color: Amarillo");
     char posicion[10];
     cout << "\n\nIngresa la opcion: ";
     cin >> posicion;
@@ -248,7 +220,10 @@ void lightningOptions() {
 
 void constantAnimation(int value) {
     y_animation_axis += 0.05;
-    glutTimerFunc(100000, constantAnimation, 0);
+    
+    
+    
+    glutTimerFunc(20000000, constantAnimation, 0);
     glutPostRedisplay();
 
 }
@@ -257,9 +232,9 @@ void constantAnimation(int value) {
 void testSquare(void) {
     glColorMaterial(GL_FRONT, GL_SHININESS);
     glEnable(GL_COLOR_MATERIAL);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, SphAmbDiff[light_color]);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, SphAmbDiff[colorPersp]);
-    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, SphShininess);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, AmbientDifferent[light_color]);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, AmbientDifferent[colorPersp]);
+    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess);
     
     //first squares
     glColor3f(255.0, 140.0, 0.0);
@@ -483,6 +458,11 @@ void forLines(void) {
     
 }
 
+void lightningOnMethod(void) {
+    glEnable(GL_LIGHTING);
+    lightningOn();
+}
+
 void render(void) {
     //glClear(GL_COLOR_BUFFER_BIT);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -490,16 +470,10 @@ void render(void) {
     gluLookAt(0, 0, 0, col, zi, 0, 0, 0, 0);
     
     glLoadIdentity();
-    //Visor superior
     glViewport(0, 300, 1200, 500);
-    //glRotatef(angleCube, 1.0f, 1.0f, 1.0f);
-    //glPushMatrix();
-    
-    //Rotacion usuario
+
     glMatrixMode(GL_MODELVIEW);
-
     glPushMatrix();
-
     glLoadIdentity();
 
     glRotatef(x_axis, 1.0, 0.0, 0.0);
@@ -517,7 +491,7 @@ void render(void) {
 
     glPopMatrix();
     
-    //Visor de animacion
+
 
     glViewport(0, -50, 600, 400);
 
@@ -541,18 +515,14 @@ void render(void) {
     
     constantAnimation(0);
     
-    if (!has_light) {
-        glDisable(GL_LIGHTING);
-    }else{
-        glEnable(GL_LIGHTING);
-        lightningOn();
-    }
+    !has_light ? glDisable(GL_LIGHTING) : lightningOnMethod() ;
+
     
     glFlush();
     glutSwapBuffers();
 }
 
-void specialKeys(int key, int x, int y) {
+void positioningKeys(int key, int x, int y) {
     if (key == GLUT_KEY_RIGHT) {
         y_axis += 5;
     } else if (key == GLUT_KEY_LEFT) {
@@ -622,7 +592,7 @@ int main(int argc, char** argv) {
     glutInitWindowSize(1200, 750);
     glutCreateWindow("Proyecto Final");
     glutDisplayFunc(render);       // Register callback handler for window re-paint
-    glutSpecialFunc(specialKeys);
+    glutSpecialFunc(positioningKeys);
     glutReshapeFunc(reshape);
     init();
     glutKeyboardFunc(keyboard);
