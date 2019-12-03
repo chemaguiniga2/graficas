@@ -9,122 +9,257 @@
 /*
 Jose Maria Aguiniga Diaz
 A01376669
+Jose Rodrigo Narvaez Berlanga
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <OpenGL/gl.h>
-#include <OpenGL/glu.h>
-#include <GLUT/glut.h>
-#include <math.h>
+#include <iostream>
 
-float angle = 45.0;
-int timeElapsed = 0;
-GLfloat y = 0.5f;
-GLfloat x = 0.3f;
-float t = 0.1;
-GLfloat xMov = 0.1f;
-GLfloat xMovDos = 0.1f;
-GLfloat yMovDos = 0.1f;
-GLfloat yMov = 0.1f;
+
+#ifdef __APPLE__
+#include <OpenGL/OpenGL.h>
+#include <GLUT/glut.h>
+#else
+#include <GL/glut.h>
+#endif
+#include "imageloader.h"
+#include <math.h>
+#include <ctime>
+#include <algorithm>
+#include <vector>
+#include <fstream>
+
+#include <string>
+#include <stdarg.h>
+#include <iostream>
+
+using namespace std;
+
+#ifdef __APPLE__
+
+#include <GLUT/glut.h>
+
+#else
+
+#include <GL/glut.h>
+
+#endif
+
+
+
+
+
+
+
+
+double x_axis = -20;
+
+double x_animation_axis = -20;
+
+double y_animation_axis, height, z_axis, x_deep_axis = 0;
+double zi, col = 0;
+
+double deep_z = 0.65;
+
+double y_axis = 35.0;
+
+char s[30];
+
+bool has_light = false;
+
+
+// ----------------------------------------------------------
+
+// Valores que controlan las propiedades de los materiales e iluminacion
+
+// ----------------------------------------------------------
+
+
+bool hasAmbiental = false;
+
+int light_position = 0;
+int light_color = 5;
+
+int colorPersp = light_color;
+
+
+
+float Noemit[4] = { 0.0, 0.0, 0.0, 1.0 };
+
+float SphShininess = 75;         // Exponenete especular
+
+
+
+// Orientacion de origen para la luz ambiental
+
+float posiciones[2][4] = { { -0.5, -1.0, 1.0, 1 } , { -0.5, -1.0, -0.3, 1 } }; // Trasera | Central
+float luz[2][4] = { { 0.5, 1.0, -1.0, 1 } , { -0.9, -0.2, -0.8, 1 } };
+
+
+float SphAmbDiff[5][4] = {       // Colores de luz ambiente y difusa
+
+
+
+   {1.0, 1.0, 1.0, 1.0},         // Blanco
+
+   {0.5, 0.5, 0.0, 1.0},         // Amarillo
+
+   {0.0, 1.0, 0.0, 1.0},         // Verde
+
+   {0.0, 0.5, 0.5, 1.0},         // Cyan
+
+   {1.0, 0.0, 1.0, 1.0}         // Magenta
+
+
+
+};
+
+
+
+// Valores de iluminacion
+
+float ambientLight[4] = { 0.2, 0.2, 0.2, 1.0 };
+
+float Lt0amb[4] = { 0.3, 0.3, 0.3, 1.0 };
+
+float Lt0diff[4] = { 1.0, 1.0, 1.0, 1.0 };
+
+float Lt0spec[4] = { 1.0, 1.0, 1.0, 1.0 };
+
+GLfloat directedLight[] = { 0.7f, 0.7f, 0.7f, 1.0f };
+
+float dirI[4] = { 1, 0, 0, 0 };            // Orientacion de origen para la luz dirigida (foco)
+float dirII[4] = { 0, 0, 0, 1 };
+
+
 
 void init(void) {
     //Initializes the window with the background, matrix mode and coordenates.
     glClearColor(0.0, 0.0, 0.0, 0.0);
-    glMatrixMode(GL_MODELVIEW);
-    gluOrtho2D(0.0,0.0,0.0,0.0);
+    glClearDepth(1.0f);
+    glMatrixMode(GL_PROJECTION);
+    glOrtho(0.0f, 1200, 600, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    
+    glDepthFunc(GL_LEQUAL);
+    glShadeModel(GL_SMOOTH);
+//    gluOrtho2D(0.0,0.0,0.0,0.0);
+//    glOrtho(0.0f, 1200, 600, 0.0f, 0.0f, 1.0f);
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 }
 
-//void greySquare(void) {
-//    //Paints the grey big square that goes at the bottom of the tile
-//    glColor3f(0.3,0.3,0.3);
-//    glBegin(GL_QUADS);
-//        glVertex3f(-0.5f,y,0);
-//        glVertex3f(0.5f,0.5f,0);
-//        glVertex3f(0.5f,-0.5f,0);
-//        glVertex3f(-0.5f,-0.5f,0);
-//    glEnd();
-//}
+// ----------------------------------------------------------
 
-//void middleLines(void) {
-//    //Paints the lines that goes through the x axis and the y axis.
-//    glColor3f(0.0,0.0,0.0);
-//    glBegin(GL_LINES);
-//        glVertex3f(0,0.5f,0);
-//        glVertex3f(0,-0.5f,0);
-//    glEnd();
-//    glColor3f(0.0,0.0,0.0);
-//    glBegin(GL_LINES);
-//        glVertex3f(-0.5f,0,0);
-//        glVertex3f(0.5f,0,0);
-//    glEnd();
-//
-//}
+// Función de retrollamada que define la iluminacion
 
-//void bats(void) {
-//    //Paints the black triangles that goes on each quadrant of the tile.
-//    glColor3f(0.0,0.0,0.0);
-//    glBegin(GL_TRIANGLES);
-//        glVertex3f(-0.4f,0.4f,0);
-//        glVertex3f(-0.2f,0.4f,0);
-//        glVertex3f(-0.4f,0.2f,0);
-//    glEnd();
-//
-//    glColor3f(0.0,0.0,0.0);
-//    glBegin(GL_TRIANGLES);
-//        glVertex3f(0.4f,0.4f,0);
-//        glVertex3f(0.2f,0.4f,0);
-//        glVertex3f(0.4f,0.2f,0);
-//    glEnd();
-//
-//    glColor3f(0.0,0.0,0.0);
-//    glBegin(GL_TRIANGLES);
-//        glVertex3f(0.4f,-0.4f,0);
-//        glVertex3f(0.2f,-0.4f,0);
-//        glVertex3f(0.4f,-0.2f,0);
-//    glEnd();
-//
-//    glColor3f(0.0,0.0,0.0);
-//    glBegin(GL_TRIANGLES);
-//        glVertex3f(-0.4f,-0.4f,0);
-//        glVertex3f(-0.2f,-0.4f,0);
-//        glVertex3f(-0.4f,-0.2f,0);
-//    glEnd();
-//}
-//
-//void redPolygons(void) {
-//    //Paints the two red polygons of the center of the tile, one above the other.
-//    glColor3f(1.0,0.0,0.0);
-//    glBegin(GL_QUADS);
-//        glVertex3f(0,0.3f,0);
-//        glVertex3f(x,0,0);
-//        glVertex3f(0,-0.3f,0);
-//        glVertex3f(-0.3f,0,0);
-//    glEnd();
-//
-//    glColor3f(0.3,0.0,0.0);
-//    glBegin(GL_QUADS);
-//        glVertex3f(0,0.2f,0);
-//        glVertex3f(0.2f,0,0);
-//        glVertex3f(0,-0.2f,0);
-//        glVertex3f(-0.2f,0,0);
-//    glEnd();
-//}
-//
-//void circleCenter(void) {
-//    //Paints the middle circle of the tile
-//    float theta; //Declare a floating variable for the cos function
-//    glColor3f(1.0, 0.0, 0.0); //Color of the circle, in this case red.
-//    glBegin(GL_POLYGON); //Declaring a polygon
-//    for (int i = 0; i < 360; i++)
-//    {
-//        theta = i * 3.142/180;
-//        glVertex2f(t*cos(theta), t*sin(theta));
-//    }
-//    glEnd();
-//}
+// ----------------------------------------------------------
+
+void lightningOn() {
+
+    // Posicionamiento de la iluminacion
+
+    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, Lt0spec);
+
+    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, Noemit);   // Turn off emission
+    if (hasAmbiental) {
+        glLightfv(GL_LIGHT0, GL_POSITION, dirI);
+    }else {
+        glLightfv(GL_LIGHT0, GL_POSITION, posiciones[light_position]); // Position is transformed by ModelView matrix
+        glLightfv(GL_LIGHT0, GL_POSITION, luz[light_position]);
+    }
+    glEnable(GL_DEPTH_TEST);   // Depth testing must be turned on
+    glEnable(GL_LIGHTING);      // Enable lighting calculations
+    glEnable(GL_LIGHT0);      // Turn on light #0.
+    // Set global ambient light
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientLight);
+    // Light 0 light values.  Its position is set in drawScene().
+    glLightfv(GL_LIGHT0, GL_AMBIENT, Lt0amb);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, Lt0diff);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, directedLight);
+    //glLightfv(GL_LIGHT0, GL_POSITION, luz[posicion_luz]);
+    glLightfv(GL_LIGHT5, GL_DIFFUSE, dirII);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, Lt0spec);
+}
+
+void lightningOptions() {
+
+
+
+    printf("\n Menu para modificar la fuente de luz");
+    printf("\n\n1. Elija el tipo de iluminacion que desea \n\n\t[1] Ambiental \n\t[2] Fuente Directa");
+    char light_type[10];
+    cout << "\n\nIngresa la opcion: ";
+    cin >> light_type;
+    printf("\n\n2. Define el color de la iluminacion \n\n\t[1] Blanco\n\t[2] Amarillo\n\t[3] Verde\n\t[4] Cyan\n\t[5] Magenta");
+    char color[10];
+    cout << "\n\nIngresa la opcion: ";
+    cin >> color;
+
+
+
+    printf("\n\n3. Elija la ubicacion \n\n\t[1] Trasera\n\t[2] Central");
+    char posicion[10];
+    cout << "\n\nIngresa la opcion: ";
+    cin >> posicion;
+
+
+
+
+
+
+    if ((atoi(light_type) == 1 || atoi(light_type) == 2) && (atoi(posicion) == 1 || atoi(posicion) == 2) && (atoi(color) == 1 || atoi(color) == 2 || atoi(color) == 3 || atoi(color) == 4 || atoi(color) == 5)) {
+
+        light_color = atoi(color) - 1;
+
+        if (atoi(light_type) == 1) {
+
+            hasAmbiental = true;
+        } else {
+            hasAmbiental = false;
+        }
+        if (atoi(posicion) == 1) {
+            light_position = 0;
+        } else {
+            light_position = 1;
+        }
+
+        glEnable(GL_LIGHTING);
+
+        lightningOn();
+
+
+
+        printf("\n\nTeclee espacio dentro del proyecto para activar la iluminacion\n\n");
+
+    }
+
+    else {
+
+        printf("\n\nOPCIONES INVALIDAS! INTENTA NUEVAMENTE\n");
+
+        lightningOptions();
+
+    }
+
+}
+
+
+
+
+
+void constantAnimation(int value) {
+    y_animation_axis += 0.05;
+    glutTimerFunc(100000, constantAnimation, 0);
+    glutPostRedisplay();
+
+}
+
 
 void testSquare(void) {
+    glColorMaterial(GL_FRONT, GL_SHININESS);
+    glEnable(GL_COLOR_MATERIAL);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, SphAmbDiff[light_color]);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, SphAmbDiff[colorPersp]);
+    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, SphShininess);
     
     //first squares
     glColor3f(255.0, 140.0, 0.0);
@@ -137,29 +272,29 @@ void testSquare(void) {
     
     glColor3f(255.0, 165.0, 0.0);
     glBegin(GL_LINE_LOOP);
-        glVertex3f(-0.5f,0.5f,0);
-        glVertex3f(0.5f,0.5f,0);
-        glVertex3f(0.5f,-0.5f,0);
-        glVertex3f(-0.5f,-0.5f,0);
+        glVertex3f(-0.5f,0.5f,-0.5);
+        glVertex3f(0.5f,0.5f,-0.5);
+        glVertex3f(0.5f,-0.5f,-0.5);
+        glVertex3f(-0.5f,-0.5f,-0.5);
     glEnd();
-    
+
     glColor3f(255.0, 0.0, 0.0);
     glBegin(GL_LINE_LOOP);
-        glVertex3f(-0.6f,0.6f,0);
-        glVertex3f(0.4f,0.6f,0);
-        glVertex3f(0.4f,-0.4f,0);
-        glVertex3f(-0.6f,-0.4f,0);
+        glVertex3f(-0.6f,0.6f,-0.7);
+        glVertex3f(0.4f,0.6f,-0.7);
+        glVertex3f(0.4f,-0.4f,-0.7);
+        glVertex3f(-0.6f,-0.4f,-0.7);
     glEnd();
-    
+
     glColor3f(0.0, 0.0, 205.0);
     glBegin(GL_LINE_LOOP);
-        glVertex3f(-0.8f,0.8f,0);
-        glVertex3f(0.2f,0.8f,0);
-        glVertex3f(0.2f,-0.2f,0);
-        glVertex3f(-0.8f,-0.2f,0);
+        glVertex3f(-0.8f,0.8f,-0.9);
+        glVertex3f(0.2f,0.8f,-0.9);
+        glVertex3f(0.2f,-0.2f,-0.9);
+        glVertex3f(-0.8f,-0.2f,-0.9);
     glEnd();
-    
-    //second squares
+//
+//    //second squares
     glColor3f(255.0, 0.0, 0.0);
     glBegin(GL_LINE_LOOP);
         glVertex3f(1.0f,0.2f,0);
@@ -167,33 +302,33 @@ void testSquare(void) {
         glVertex3f(2.0f,-0.8f,0);
         glVertex3f(1.0f,-0.8f,0);
     glEnd();
-    
+
     glColor3f(255.0, 0.0, 0.0);
     glBegin(GL_LINE_LOOP);
-        glVertex3f(0.7f,0.5f,0);
-        glVertex3f(1.7f,0.5f,0);
-        glVertex3f(1.7f,-0.5f,0);
-        glVertex3f(0.7f,-0.5f,0);
+        glVertex3f(0.7f,0.5f,-0.5);
+        glVertex3f(1.7f,0.5f,-0.5);
+        glVertex3f(1.7f,-0.5f,-0.5);
+        glVertex3f(0.7f,-0.5f,-0.5);
     glEnd();
-////
+
     glColor3f(255.0, 0.0, 0.0);
     glBegin(GL_LINE_LOOP);
-        glVertex3f(0.6f,0.6f,0);
-        glVertex3f(1.6f,0.6f,0);
-        glVertex3f(1.6f,-0.4f,0);
-        glVertex3f(0.6f,-0.4f,0);
+        glVertex3f(0.6f,0.6f,-0.7);
+        glVertex3f(1.6f,0.6f,-0.7);
+        glVertex3f(1.6f,-0.4f,-0.7);
+        glVertex3f(0.6f,-0.4f,-0.7);
     glEnd();
-////
+//////
     glColor3f(255.0, 0.0, 0.0);
     glBegin(GL_LINE_LOOP);
-        glVertex3f(0.4f,0.8f,0);
-        glVertex3f(1.4f,0.8f,0);
-        glVertex3f(1.4f,-0.2f,0);
-        glVertex3f(0.4f,-0.2f,0);
+        glVertex3f(0.4f,0.8f,-0.9);
+        glVertex3f(1.4f,0.8f,-0.9);
+        glVertex3f(1.4f,-0.2f,-0.9);
+        glVertex3f(0.4f,-0.2f,-0.9);
     glEnd();
-    
-    //Left rectangles
-    
+//
+//    //Left rectangles
+
     glColor3f(255.0, 0.0, 0.0);
     glBegin(GL_LINE_LOOP);
         glVertex3f(-0.4f,0.2f,0);
@@ -201,47 +336,48 @@ void testSquare(void) {
         glVertex3f(-1.4f,-0.8f,0);
         glVertex3f(-0.4f,-0.8f,0);
     glEnd();
-    
+
     glColor3f(255.0, 0, 0.0);
     glBegin(GL_LINE_LOOP);
-        glVertex3f(-0.7f,0.5f,0);
-        glVertex3f(-1.7f,0.5f,0);
-        glVertex3f(-1.7f,-0.5f,0);
-        glVertex3f(-0.7f,-0.5f,0);
+        glVertex3f(-0.7f,0.5f,-0.5);
+        glVertex3f(-1.7f,0.5f,-0.5);
+        glVertex3f(-1.7f,-0.5f,-0.5);
+        glVertex3f(-0.7f,-0.5f,-0.5);
     glEnd();
-    
+
     glColor3f(255.0, 0.0, 0.0);
     glBegin(GL_LINE_LOOP);
-        glVertex3f(-0.8f,0.6f,0);
-        glVertex3f(-1.8f,0.6f,0);
-        glVertex3f(-1.8f,-0.4f,0);
-        glVertex3f(-0.8f,-0.4f,0);
+        glVertex3f(-0.8f,0.6f,-0.7);
+        glVertex3f(-1.8f,0.6f,-0.7);
+        glVertex3f(-1.8f,-0.4f,-0.7);
+        glVertex3f(-0.8f,-0.4f,-0.7);
     glEnd();
-    
+
     glColor3f(255.0, 0.0, 0.0);
     glBegin(GL_LINE_LOOP);
-        glVertex3f(-1.0f,0.8f,0);
-        glVertex3f(-2.0f,0.8f,0);
-        glVertex3f(-2.0f,-0.2f,0);
-        glVertex3f(-1.0f,-0.2f,0);
+        glVertex3f(-1.0f,0.8f,-0.9);
+        glVertex3f(-2.0f,0.8f,-0.9);
+        glVertex3f(-2.0f,-0.2f,-0.9);
+        glVertex3f(-1.0f,-0.2f,-0.9);
     glEnd();
+//
+//
     
-    
+    glColorMaterial(GL_FRONT, GL_EMISSION);
+
+    glEnable(GL_COLOR_MATERIAL);
+    glColor3f(0.3,0.3,0.3);
+    glBegin(GL_QUADS);
+        glVertex3f(-2.0f,-1.0f,-1.0);
+        glVertex3f(2.0f,-1.0f,-1.0);
+        glVertex3f(2.0f,-1.0f,1.0);
+        glVertex3f(-2.0f,-1.0f,1.0);
+    glEnd();
     
 }
 
 void forLines(void) {
     
-//    GLfloat k = -0.8f;
-//    for (int i = 0; i < 33; i++)
-//    {
-//        k = k + 0.03;
-//        glColor3f(0.0, 0.0, 205.0);
-//        glBegin(GL_LINES);
-//            glVertex3f(k,0.8f,0);
-//            glVertex3f(k,-0.2f,0);
-//        glEnd();
-//    }
     
     GLfloat t = -0.6f;
     GLfloat t1 = 1.0f;
@@ -255,38 +391,38 @@ void forLines(void) {
     GLfloat h1 = -1.7f;
     GLfloat h2 = -1.8f;
     GLfloat h3 = -2.0f;
-    
+//
     for (int i = 0; i < 33; i++)
     {
         t = t + 0.03;
         t1 = t1 + 0.03;
-        
+
         k = k + 0.03;
         glColor3f(0.0, 0.0, 205.0);
         glBegin(GL_LINES);
-            glVertex3f(k,0.8f,0);
-            glVertex3f(k,-0.2f,0);
+            glVertex3f(k,0.8f,-0.9);
+            glVertex3f(k,-0.2f,-0.9);
         glEnd();
-        
+
         glColor3f(255.0, 0.0, 0.0);
         glBegin(GL_LINES);
-            glVertex3f(t,0.6f,0);
-            glVertex3f(t,-0.4f,0);
+            glVertex3f(t,0.6f,-0.7);
+            glVertex3f(t,-0.4f,-0.7);
         glEnd();
-        
+
         glColor3f(255.0, 0.0, 0.0);
         glBegin(GL_LINES);
             glVertex3f(t1,0.2f,0);
             glVertex3f(t1,-0.8f,0);
         glEnd();
-        
+
         j = j + 0.03;
         glColor3f(255.0, 165.0, 0.0);
         glBegin(GL_LINES);
-            glVertex3f(j,0.5f,0);
-            glVertex3f(j,-0.5f,0);
+            glVertex3f(j,0.5f,-0.5);
+            glVertex3f(j,-0.5f,-0.5);
         glEnd();
-        
+
         //Second squares
         u = u + 0.03;
         glColor3f(255.0, 165.0, 0.0);
@@ -294,550 +430,203 @@ void forLines(void) {
             glVertex3f(u,0.2f,0);
             glVertex3f(u,-0.8f,0);
         glEnd();
-//
+
         q = q + 0.03;
         glColor3f(255.0, 0.0, 0.0);
         glBegin(GL_LINES);
-            glVertex3f(q,0.5f,0);
-            glVertex3f(q,-0.5f,0);
+            glVertex3f(q,0.5f,-0.5);
+            glVertex3f(q,-0.5f,-0.5);
         glEnd();
-        
+
         q1 = q1 + 0.03;
         glColor3f(255.0, 0.0, 0.0);
         glBegin(GL_LINES);
-            glVertex3f(q1,0.6f,0);
-            glVertex3f(q1,-0.4f,0);
+            glVertex3f(q1,0.6f,-0.7);
+            glVertex3f(q1,-0.4f,-0.7);
         glEnd();
-        
+
         q2 = q2 + 0.03;
         glColor3f(255.0, 0.0, 0.0);
         glBegin(GL_LINES);
-            glVertex3f(q2,0.8f,0);
-            glVertex3f(q2,-0.2f,0);
+            glVertex3f(q2,0.8f,-0.9);
+            glVertex3f(q2,-0.2f,-0.9);
         glEnd();
-        
+//
         h = h + 0.03;
         glColor3f(255.0, 0.0, 0.0);
         glBegin(GL_LINES);
             glVertex3f(h,0.2f,0);
             glVertex3f(h,-0.8f,0);
         glEnd();
-        
+
         h1 = h1 + 0.03;
         glColor3f(255.0, 0.0, 0.0);
         glBegin(GL_LINES);
-            glVertex3f(h1,0.5f,0);
-            glVertex3f(h1,-0.5f,0);
+            glVertex3f(h1,0.5f,-0.5);
+            glVertex3f(h1,-0.5f,-0.5);
         glEnd();
-        
+
         h2 = h2 + 0.03;
         glColor3f(255.0, 0.0, 0.0);
         glBegin(GL_LINES);
-            glVertex3f(h2,0.6f,0);
-            glVertex3f(h2,-0.4f,0);
+            glVertex3f(h2,0.6f,-0.7);
+            glVertex3f(h2,-0.4f,-0.7);
         glEnd();
-        
+
         h3 = h3 + 0.03;
         glColor3f(255.0, 0.0, 0.0);
         glBegin(GL_LINES);
-            glVertex3f(h3,0.8f,0);
-            glVertex3f(h3,-0.2f,0);
+            glVertex3f(h3,0.8f,-0.9);
+            glVertex3f(h3,-0.2f,-0.9);
         glEnd();
     }
     
-//    GLfloat j = -0.5f;
-//    for (int i = 0; i < 33; i++)
-//    {
-//        j = j + 0.03;
-//        glColor3f(255.0, 165.0, 0.0);
-//        glBegin(GL_LINES);
-//            glVertex3f(j,0.5f,0);
-//            glVertex3f(j,-0.5f,0);
-//        glEnd();
-//    }
-    
-//    GLfloat u = -0.2f;
-//    for (int i = 0; i < 33; i++)
-//    {
-//        u = u + 0.03;
-//        glColor3f(255.0, 165.0, 0.0);
-//        glBegin(GL_LINES);
-//            glVertex3f(u,0.2f,0);
-//            glVertex3f(u,-0.8f,0);
-//        glEnd();
-//    }
-    
-    
 }
-
-//void testLines(void) {
-//
-//    //    for (int i = -0.5f; i < 0.5f; i += 0.05f)
-//    //    {
-//    //        glVertex3f(i,0.5f,0);
-//    //        glVertex3f(i,-0.5f,0);
-//    //    }
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.47,0.5f,0);
-//        glVertex3f(-0.47,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.44,0.5f,0);
-//        glVertex3f(-0.44,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.41,0.5f,0);
-//        glVertex3f(-0.41,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.38,0.5f,0);
-//        glVertex3f(-0.38,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.35,0.5f,0);
-//        glVertex3f(-0.35,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.32,0.5f,0);
-//        glVertex3f(-0.32,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.29,0.5f,0);
-//        glVertex3f(-0.29,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.26,0.5f,0);
-//        glVertex3f(-0.26,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.23,0.5f,0);
-//        glVertex3f(-0.23,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.20,0.5f,0);
-//        glVertex3f(-0.20,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.17,0.5f,0);
-//        glVertex3f(-0.17,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.14,0.5f,0);
-//        glVertex3f(-0.14,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.11,0.5f,0);
-//        glVertex3f(-0.11,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.08,0.5f,0);
-//        glVertex3f(-0.08,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.05,0.5f,0);
-//        glVertex3f(-0.05,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(-0.02,0.5f,0);
-//        glVertex3f(-0.02,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.01,0.5f,0);
-//        glVertex3f(0.01,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.04,0.5f,0);
-//        glVertex3f(0.04,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.07,0.5f,0);
-//        glVertex3f(0.07,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.10,0.5f,0);
-//        glVertex3f(0.10,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.13,0.5f,0);
-//        glVertex3f(0.13,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.15,0.5f,0);
-//        glVertex3f(0.15,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.18,0.5f,0);
-//        glVertex3f(0.18,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.21,0.5f,0);
-//        glVertex3f(0.21,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.24,0.5f,0);
-//        glVertex3f(0.24,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.27,0.5f,0);
-//        glVertex3f(0.27,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.30,0.5f,0);
-//        glVertex3f(0.30,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.33,0.5f,0);
-//        glVertex3f(0.33,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.36,0.5f,0);
-//        glVertex3f(0.36,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.39,0.5f,0);
-//        glVertex3f(0.39,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.42,0.5f,0);
-//        glVertex3f(0.42,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.45,0.5f,0);
-//        glVertex3f(0.45,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//    glColor3f(255.0, 165.0, 0.0);
-//    glBegin(GL_LINES);
-//
-//        glVertex3f(0.48,0.5f,0);
-//        glVertex3f(0.48,-0.5f,0);
-//
-//
-//    glEnd();
-//
-//}
 
 void render(void) {
-    glClear(GL_COLOR_BUFFER_BIT);
-//    glPushMatrix();
-//
-//    //We paint every component of the tile.
-//
+    //glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //Vision camara
+    gluLookAt(0, 0, 0, col, zi, 0, 0, 0, 0);
+    
+    glLoadIdentity();
+    //Visor superior
+    glViewport(0, 300, 1200, 500);
+    //glRotatef(angleCube, 1.0f, 1.0f, 1.0f);
+    //glPushMatrix();
+    
+    //Rotacion usuario
+    glMatrixMode(GL_MODELVIEW);
+
+    glPushMatrix();
+
+    glLoadIdentity();
+
+    glRotatef(x_axis, 1.0, 0.0, 0.0);
+
+    glRotatef(y_axis, 0.0, 1.0, 0.0);
+
+    glScalef(deep_z, deep_z, deep_z);
+
+    glTranslatef(0, height, z_axis);
+
+    glTranslatef(x_deep_axis, height, 0);
+
     testSquare();
     forLines();
-    //testLines();
-//    greySquare();
-//    bats();
-//    middleLines();
-//    redPolygons();
-//    circleCenter();
-//
-//    glPopMatrix();
+
+    glPopMatrix();
+    
+    //Visor de animacion
+
+    glViewport(0, -50, 600, 400);
+
+
+
+    glMatrixMode(GL_MATRIX_MODE);
+
+    glPushMatrix();
+
+    glLoadIdentity();
+
+    glRotatef(x_animation_axis, 1.0, 0.0, 0.0);
+
+    glRotatef(y_animation_axis, 0.0, 1.0, 0.0);
+    
+
+    testSquare();
+    forLines();
+    
+    glPopMatrix();
+    
+    constantAnimation(0);
+    
+    if (!has_light) {
+        glDisable(GL_LIGHTING);
+    }else{
+        glEnable(GL_LIGHTING);
+        lightningOn();
+    }
+    
     glFlush();
+    glutSwapBuffers();
 }
 
-//void display() {
-//    glClear(GL_COLOR_BUFFER_BIT);
-//    glMatrixMode(GL_MODELVIEW);
-//    glLoadIdentity();
-//
-//    glPushMatrix();
-//    if(timeElapsed <= 47500) {
-//
-//        if(timeElapsed <= 40000) {
-//            angle += 0.5;
-//            glRotatef(angle, 0.0, 1.0, 1.0);
-//        } else if(timeElapsed <= 41000) {
-//            y += 0.01;
-//        } else if(timeElapsed <= 42000) {
-//            x += 0.01;
-//        } else if(timeElapsed <= 45000){
-//            t += 0.01;
-//        } else if(timeElapsed <= 47000){
-//            t = 0.1;
-//            x = 0.3f;
-//            y = 0.5f;
-//            glScalef(0.01f,0.01f,0);
-//        }
-//        render();
-//    } else if (timeElapsed <= 96000){
-//
-//        glColor3f(0.3,0.3,0.3);
-//        glTranslatef(0.0f, yMovDos, 0.0);
-//        glBegin(GL_QUADS);
-//            glVertex3f(-0.5f,0.5f,0);
-//            glVertex3f(0.5f,0.5f,0);
-//            glVertex3f(0.5f,-0.5f,0);
-//            glVertex3f(-0.5f,-0.5f,0);
-//        glEnd();
-//
-//        glColor3f(1.0,0.0,0.0);
-//        glTranslatef(xMov, 0.1f, 0.0);
-//        glBegin(GL_QUADS);
-//            glVertex3f(0,0.3f,0);
-//            glVertex3f(x,0,0);
-//            glVertex3f(0,-0.3f,0);
-//            glVertex3f(-0.3f,0,0);
-//        glEnd();
-//
-//        glColor3f(0.0,0.0,0.0);
-//        glTranslatef(0.1f, yMov, 0.0);
-//        glBegin(GL_TRIANGLES);
-//            glVertex3f(-0.4f,0.4f,0);
-//            glVertex3f(-0.2f,0.4f,0);
-//            glVertex3f(-0.4f,0.2f,0);
-//        glEnd();
-//
-//        glColor3f(0.0,0.0,0.0);
-//        glTranslatef(0.1f, yMov, 0.0);
-//        glBegin(GL_TRIANGLES);
-//            glVertex3f(0.4f,0.4f,0);
-//            glVertex3f(0.2f,0.4f,0);
-//            glVertex3f(0.4f,0.2f,0);
-//        glEnd();
-//
-//        glColor3f(0.0,0.0,0.0);
-//        glTranslatef(xMovDos, yMov, 0.0);
-//        glBegin(GL_TRIANGLES);
-//            glVertex3f(0.4f,-0.4f,0);
-//            glVertex3f(0.2f,-0.4f,0);
-//            glVertex3f(0.4f,-0.2f,0);
-//        glEnd();
-//
-//        glColor3f(0.0,0.0,0.0);
-//        glTranslatef(xMovDos, yMovDos, 0.0);
-//        glBegin(GL_TRIANGLES);
-//            glVertex3f(-0.4f,-0.4f,0);
-//            glVertex3f(-0.2f,-0.4f,0);
-//            glVertex3f(-0.4f,-0.2f,0);
-//        glEnd();
-//
-//        glColor3f(0.3,0.0,0.0);
-//        glTranslatef(xMovDos, 0.0, 0.0);
-//        glBegin(GL_QUADS);
-//            glVertex3f(0,0.2f,0);
-//            glVertex3f(0.2f,0,0);
-//            glVertex3f(0,-0.2f,0);
-//            glVertex3f(-0.2f,0,0);
-//        glEnd();
-//
-//        // float theta; //Declare a floating variable for the cos function
-//        // glColor3f(1.0, 0.0, 0.0); //Color of the circle, in this case red.
-//        // glTranslatef(xMovDos, 0.0, 0.0);
-//        // glBegin(GL_POLYGON); //Declaring a polygon
-//        // for (int i = 0; i < 360; i++)
-//        // {
-//        //     theta = i * 3.142/180;
-//        //     glVertex2f(t*cos(theta), t*sin(theta));
-//        // }
-//
-//        // if (timeElapsed >= 50000 && timeElapsed < 52000) {
-//        //     yMov -= 0.00001;
-//        //     xMov -= 0.00001;
-//        // } else if (timeElapsed >= 52000 && timeElapsed < 55000) {
-//        //   xMov += 0.00001;
-//        //   yMov += 0.00001;
-//        // } else if (timeElapsed >= 55000 && timeElapsed < 57000) {
-//        //     yMov -= 0.00001;
-//        //     xMov -= 0.00001;
-//        // } else if (timeElapsed >= 57000 && timeElapsed < 59000) {
-//        //     xMov += 0.00001;
-//        //     yMov += 0.00001;
-//        // }
-//        xMov += 0.001;
-//        yMov += 0.001;
-//        xMovDos -= 0.001;
-//        yMovDos -= 0.001;
-//
-//
-//
-//    } else if(timeElapsed <= 52000) {
-//
-//    }
-//    glPopMatrix();
-//    glutSwapBuffers();
-//
-//    timeElapsed += 30;
-//
-//}
-//
-//void timer(int value) {
-//
-//    glutPostRedisplay();
-//    glutTimerFunc(30, timer, 0);
-//}
+void specialKeys(int key, int x, int y) {
+    if (key == GLUT_KEY_RIGHT) {
+        y_axis += 5;
+    } else if (key == GLUT_KEY_LEFT) {
+        y_axis -= 5;
+    } else if (key == GLUT_KEY_UP) {
+        x_axis += 5;
+    } else if (key == GLUT_KEY_DOWN) {
+        x_axis -=5;
+    }
+    
+    glutPostRedisplay();
+}
+
+
+void reshape(GLsizei width, GLsizei height) {  // GLsizei for non-negative integer
+   // Compute aspect ratio of the new window
+   if (height == 0) height = 1;                // To prevent divide by 0
+   GLfloat aspect = (GLfloat)width / (GLfloat)height;
+ 
+   // Set the viewport to cover the new window
+   glViewport(0, 0, width, height);
+ 
+   // Set the aspect ratio of the clipping volume to match the viewport
+   glMatrixMode(GL_PROJECTION);  // To operate on the Projection matrix
+   glLoadIdentity();             // Reset
+
+}
+
+void keyboard(unsigned char key, int x, int y) {
+    //Inside the switch by the key recieved by the params we execute the function the user wants to be executed.
+    switch(key) {
+        //In the case of R, the tile gets rotated 10 degrees to the wrong way of the clock's hands.
+        case '+':
+            deep_z += 0.05;
+            glutPostRedisplay();
+            break;
+        case '-':
+            deep_z -= 0.05;
+            glutPostRedisplay();
+            break;
+        case 'u':
+            height += 0.05;
+            glutPostRedisplay();
+            break;
+        case 'd':
+            height -= 0.05;
+            glutPostRedisplay();
+            break;
+        case 'i':
+            lightningOptions();
+            glutPostRedisplay();
+            break;
+        case ' ':
+            has_light = !has_light;
+            glutPostRedisplay();
+            break;
+   }
+}
+
 
 
 //We define our main method that will handle all the previous methods bellow.
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-    glutInitWindowPosition(50, 100);
-    glutInitWindowSize(500, 500);
-    glutCreateWindow("Miniproyecto");
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowPosition(50, 50);
+    glutInitWindowSize(1200, 750);
+    glutCreateWindow("Proyecto Final");
+    glutDisplayFunc(render);       // Register callback handler for window re-paint
+    glutSpecialFunc(specialKeys);
+    glutReshapeFunc(reshape);
     init();
-    glutDisplayFunc(render);
-    //glutTimerFunc(0, timer, 0);
+    glutKeyboardFunc(keyboard);
+
     glutMainLoop();
     return 0;
 }
